@@ -1,0 +1,28 @@
+kind = "slides"
+previewPath = "/farmcare-ai-deck/"
+title = "FarmCare AI — Project Deck"
+description = "A six-slide presentation introducing FarmCare AI, a Bangladesh-focused AI field companion for crop, livestock, and fisheries management."
+version = "1.0.0"
+id = "artifacts/farmcare-ai-deck"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/farmcare-ai-deck/" ]
+localPort = 20043
+
+[services.development]
+run = "pnpm --filter @workspace/farmcare-ai-deck run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/farmcare-ai-deck", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/farmcare-ai-deck/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "20043"
+BASE_PATH = "/farmcare-ai-deck/"

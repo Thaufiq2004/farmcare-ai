@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "FarmCare AI"
+description = "An intelligent agriculture companion for Bangladeshi farmers, bringing crop, livestock, and fisheries guidance into one practical, locally aware workspace."
+version = "1.0.0"
+id = "artifacts/farmcare-ai"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 23357
+
+[services.development]
+run = "pnpm --filter @workspace/farmcare-ai run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/farmcare-ai", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/farmcare-ai/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "23357"
+BASE_PATH = "/"

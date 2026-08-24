@@ -1,0 +1,50 @@
+[
+  {
+    "id": "4f03b3a1-5e6c-4b7d-a001-000000000001",
+    "position": 1,
+    "filepath": "src/pages/slides/Title.tsx",
+    "title": "FarmCare AI",
+    "description": "A trusted AI field companion for Bangladesh",
+    "speakerNotes": ""
+  },
+  {
+    "id": "4f03b3a1-5e6c-4b7d-a001-000000000002",
+    "position": 2,
+    "filepath": "src/pages/slides/Problem.tsx",
+    "title": "One farm. Three systems. Too many decisions.",
+    "description": "The challenge facing connected farm management",
+    "speakerNotes": ""
+  },
+  {
+    "id": "4f03b3a1-5e6c-4b7d-a001-000000000003",
+    "position": 3,
+    "filepath": "src/pages/slides/DailyBrief.tsx",
+    "title": "A daily brief built for the field",
+    "description": "How FarmCare AI turns complexity into action",
+    "speakerNotes": ""
+  },
+  {
+    "id": "4f03b3a1-5e6c-4b7d-a001-000000000004",
+    "position": 4,
+    "filepath": "src/pages/slides/Modules.tsx",
+    "title": "Three modules. One connected farm profile.",
+    "description": "Crop, livestock, and fisheries in one system",
+    "speakerNotes": ""
+  },
+  {
+    "id": "4f03b3a1-5e6c-4b7d-a001-000000000005",
+    "position": 5,
+    "filepath": "src/pages/slides/Bangladesh.tsx",
+    "title": "Bangladesh is not an edge case",
+    "description": "Local context is the product advantage",
+    "speakerNotes": ""
+  },
+  {
+    "id": "4f03b3a1-5e6c-4b7d-a001-000000000006",
+    "position": 6,
+    "filepath": "src/pages/slides/Future.tsx",
+    "title": "From prototype to trusted farm infrastructure",
+    "description": "The path from MVP to a durable platform",
+    "speakerNotes": ""
+  }
+]
