@@ -1,0 +1,9 @@
+services:
+  farmcare-ai:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: farmcare-ai
+    ports:
+      - "8080:80"
+    restart: unless-stopped

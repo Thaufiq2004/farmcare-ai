@@ -1,0 +1,14 @@
+.git
+.github
+.local
+.agents
+.conversation
+node_modules
+**/node_modules
+**/dist
+**/.replit-artifact
+**/*.tsbuildinfo
+.env
+.env.*
+!.env.example
+screenshots
