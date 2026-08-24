@@ -2,7 +2,7 @@
   "framework": "vite",
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm --filter @workspace/farmcare-ai run build",
-  "outputDirectory": "artifacts/farmcare-ai/dist/public",
+  "outputDirectory": "dist",
   "env": {
     "BASE_PATH": "/",
     "PORT": "4173"
