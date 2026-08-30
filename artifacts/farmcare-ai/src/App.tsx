@@ -1,5 +1,16 @@
-import { type ReactNode, useMemo, useState } from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { QueryClient, QueryClientProvider, useQueryClient } from '@tanstack/react-query';
+import {
+  ClerkProvider,
+  Show,
+  SignIn,
+  SignUp,
+  useAuth,
+  useClerk,
+  useUser,
+} from '@clerk/react';
+import { publishableKeyFromHost } from '@clerk/react/internal';
+import { shadcn } from '@clerk/themes';
 import { ErrorBoundary } from '@/components/error-boundary';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -18,6 +29,7 @@ import {
   Fish,
   Gauge,
   Leaf,
+  LogOut,
   MapPin,
   MessageCircle,
   Plus,
@@ -43,6 +55,69 @@ import NotFound from '@/pages/not-found';
 import { Route, Switch, Link, useLocation, Router as WouterRouter } from 'wouter';
 
 const queryClient = new QueryClient();
+const clerkPubKey = publishableKeyFromHost(
+  window.location.hostname,
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+);
+const clerkProxyUrl = import.meta.env.VITE_CLERK_PROXY_URL;
+const basePath = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+function stripBase(path: string): string {
+  return basePath && path.startsWith(basePath)
+    ? path.slice(basePath.length) || '/'
+    : path;
+}
+
+const clerkAppearance = {
+  theme: shadcn,
+  cssLayerName: 'clerk',
+  options: {
+    logoPlacement: 'inside' as const,
+    logoLinkUrl: basePath || '/',
+    logoImageUrl: `${window.location.origin}${basePath}/logo.svg`,
+    socialButtonsPlacement: 'top' as const,
+    socialButtonsVariant: 'blockButton' as const,
+  },
+  variables: {
+    colorPrimary: '#1f5e4e',
+    colorForeground: '#203c35',
+    colorMutedForeground: '#667b72',
+    colorDanger: '#b34f3d',
+    colorBackground: '#fffefa',
+    colorInput: '#fafbf5',
+    colorInputForeground: '#203c35',
+    colorNeutral: '#d8ded5',
+    fontFamily: 'DM Sans, Noto Sans Bengali, sans-serif',
+    borderRadius: '0.8rem',
+  },
+  elements: {
+    rootBox: 'w-full flex justify-center',
+    cardBox: 'bg-[#fffefa] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-[0_20px_50px_rgba(24,61,51,.12)]',
+    card: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    footer: '!shadow-none !border-0 !bg-transparent !rounded-none',
+    headerTitle: 'font-semibold text-[#183f35]',
+    headerSubtitle: 'text-[#667b72]',
+    socialButtonsBlockButtonText: 'font-semibold text-[#355d50]',
+    formFieldLabel: 'font-semibold text-[#45665a]',
+    footerActionLink: 'font-semibold text-[#1f5e4e]',
+    footerActionText: 'text-[#667b72]',
+    dividerText: 'text-[#82928b]',
+    identityPreviewEditButton: 'font-semibold text-[#1f5e4e]',
+    formFieldSuccessText: 'text-[#397461]',
+    alertText: 'text-[#a34e38]',
+    logoBox: 'justify-center',
+    logoImage: 'h-14 w-14 rounded-2xl',
+    socialButtonsBlockButton: 'border-[#d8ded5] bg-[#fafbf5] hover:bg-[#f0f6ef]',
+    formButtonPrimary: 'bg-[#1f5e4e] text-[#fffbea] hover:bg-[#184c40]',
+    formFieldInput: 'border-[#d8ded5] bg-[#fafbf5] text-[#203c35]',
+    footerAction: 'border-t border-[#e8e7dc]',
+    dividerLine: 'bg-[#e8e7dc]',
+    alert: 'border-[#e4c4ba] bg-[#fbefeb]',
+    otpCodeFieldInput: 'border-[#d8ded5] bg-[#fafbf5] text-[#203c35]',
+    formFieldRow: 'gap-2',
+    main: 'gap-5',
+  },
+};
 
 type Language = 'en' | 'bn';
 type AlertItem = {
@@ -137,6 +212,11 @@ function Panel({ children, className = '' }: { children: ReactNode; className?: 
 function Shell({ children, language, onLanguage }: { children: ReactNode; language: Language; onLanguage: () => void }) {
   const [location] = useLocation();
   const t = labels[language];
+  const { user } = useUser();
+  const { signOut } = useClerk();
+  const displayName = user?.fullName || user?.firstName || 'Farm operator';
+  const initials = (user?.firstName?.[0] || user?.emailAddresses[0]?.emailAddress?.[0] || 'F').toUpperCase();
+  const handleSignOut = () => signOut({ redirectUrl: basePath || '/' });
   return (
     <div className="min-h-[100dvh] bg-[#f5f4ed] text-[#203c35]">
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[246px] flex-col border-r border-[#355a4e] bg-[#163f35] px-5 py-6 text-[#f4f0df] lg:flex">
@@ -161,17 +241,20 @@ function Shell({ children, language, onLanguage }: { children: ReactNode; langua
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#375f52]"><div className="h-full w-[68%] rounded-full bg-[#f5c95a]" /></div>
             <p className="mt-2 text-[10px] text-[#b8cfc1]">Rain chance 68% · good planting window</p>
           </div>
-          <Link href="/settings" className="flex items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-[#254f43]" data-testid="link-profile-sidebar">
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#d5e5d4] text-sm font-bold text-[#28594c]">RH</span>
-            <span className="min-w-0"><strong className="block truncate text-sm">Rahim Hossain</strong><small className="block truncate text-[11px] text-[#a9c5b6]">Bhaluka, Mymensingh</small></span>
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/settings" className="flex min-w-0 flex-1 items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-[#254f43]" data-testid="link-profile-sidebar">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#d5e5d4] text-sm font-bold text-[#28594c]">{initials}</span>
+              <span className="min-w-0"><strong className="block truncate text-sm">{displayName}</strong><small className="block truncate text-[11px] text-[#a9c5b6]">Bhaluka, Mymensingh</small></span>
+            </Link>
+            <button type="button" onClick={handleSignOut} className="rounded-lg p-2 text-[#a9c5b6] hover:bg-[#254f43] hover:text-[#fff9e7]" aria-label="Sign out" data-testid="button-sign-out-sidebar"><LogOut size={16} /></button>
+          </div>
         </div>
       </aside>
       <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between border-b border-[#e2e1d8] bg-[#f5f4ed]/95 px-4 backdrop-blur lg:hidden">
         <Link href="/" className="flex items-center gap-2" data-testid="link-brand-mobile">
           <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#f5c95a] text-[#183d33]"><Sprout size={19} /></span><strong className="font-display text-lg">FarmCare</strong>
         </Link>
-        <div className="flex items-center gap-2"><button className="rounded-lg p-2 text-[#557268] hover:bg-[#e8e8dd]" onClick={onLanguage} data-testid="button-language-mobile">{language === 'en' ? 'বাং' : 'EN'}</button><Link href="/settings" className="grid h-9 w-9 place-items-center rounded-full bg-[#d5e5d4] text-xs font-bold text-[#28594c]" data-testid="link-profile-mobile">RH</Link></div>
+        <div className="flex items-center gap-2"><button className="rounded-lg p-2 text-[#557268] hover:bg-[#e8e8dd]" onClick={onLanguage} data-testid="button-language-mobile">{language === 'en' ? 'বাং' : 'EN'}</button><Link href="/settings" className="grid h-9 w-9 place-items-center rounded-full bg-[#d5e5d4] text-xs font-bold text-[#28594c]" data-testid="link-profile-mobile">{initials}</Link><button type="button" onClick={handleSignOut} className="rounded-lg p-2 text-[#557268] hover:bg-[#e8e8dd]" aria-label="Sign out" data-testid="button-sign-out-mobile"><LogOut size={16} /></button></div>
       </header>
       <main className="min-h-[100dvh] lg:ml-[246px]">
         <div className="mx-auto max-w-[1440px] px-4 py-5 sm:px-6 lg:px-10 lg:py-8">{children}</div>
@@ -301,6 +384,103 @@ function SettingsPage({ language, onLanguage }: { language: Language; onLanguage
   return <div className="mx-auto max-w-4xl"><PageHeader language={language} eyebrow="Profile & farm settings" title="Make FarmCare fit your farm." description="Keep your location and season current so field guidance stays relevant." action={<button onClick={() => { setSaved(true); setTimeout(() => setSaved(false), 2200); }} className="flex items-center justify-center gap-2 rounded-xl bg-[#1f5e4e] px-4 py-2.5 text-sm font-semibold text-white hover:-translate-y-0.5" data-testid="button-save-settings"><Save size={16} /> {saved ? 'Saved' : labels[language].save}</button>} /><div className="grid gap-5 md:grid-cols-[.8fr_1.2fr]"><Panel className="p-5 sm:p-6"><div className="flex items-center gap-3"><span className="grid h-14 w-14 place-items-center rounded-full bg-[#d5e5d4] text-lg font-bold text-[#28594c]">RH</span><div><h2 className="font-display text-xl text-[#214d40]">Rahim Hossain</h2><p className="mt-1 text-xs text-[#84958c]">Smallholder farmer · Member since 2023</p></div></div><div className="mt-7 space-y-3"><button onClick={onLanguage} className="flex w-full items-center justify-between rounded-xl bg-[#f4f6ee] px-3.5 py-3 text-left hover:bg-[#ebf1e8]" data-testid="button-language-settings"><span className="flex items-center gap-2 text-sm font-semibold text-[#45665a]"><MessageCircle size={16} /> Language</span><span className="text-xs font-bold text-[#9a7130]">{language === 'en' ? 'English / বাংলা' : 'বাংলা / English'}</span></button><div className="flex items-center justify-between rounded-xl bg-[#f4f6ee] px-3.5 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-[#45665a]"><Bell size={16} /> Field reminders</span><span className="h-5 w-9 rounded-full bg-[#4d9275] p-0.5"><span className="block h-4 w-4 translate-x-4 rounded-full bg-white shadow-sm" /></span></div></div></Panel><Panel className="p-5 sm:p-6"><div className="mb-5 flex items-center gap-2"><IconBadge icon={MapPin} tone="sun" /><div><h2 className="font-display text-xl text-[#214d40]">Farm location</h2><p className="text-xs text-[#84958c]">Used for local weather and market context</p></div></div><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-bold text-[#567267]">District<select value={district} onChange={(e) => setDistrict(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8ded5] bg-[#fafbf5] px-3 py-3 text-sm font-normal text-[#3a5e52] outline-none focus:ring-2 focus:ring-[#b7d3bd]" data-testid="select-district"><option>Mymensingh</option><option>Rangpur</option><option>Rajshahi</option><option>Jashore</option></select></label><label className="text-xs font-bold text-[#567267]">Upazila<select value={upazila} onChange={(e) => setUpazila(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8ded5] bg-[#fafbf5] px-3 py-3 text-sm font-normal text-[#3a5e52] outline-none focus:ring-2 focus:ring-[#b7d3bd]" data-testid="select-upazila"><option>Bhaluka</option><option>Trishal</option><option>Phulpur</option><option>Gangachara</option></select></label></div><div className="my-6 h-px bg-[#e8e7dc]" /><div className="mb-5 flex items-center gap-2"><IconBadge icon={Wheat} tone="teal" /><div><h2 className="font-display text-xl text-[#214d40]">Farm profile</h2><p className="text-xs text-[#84958c]">The basics behind your recommendations</p></div></div><div className="grid gap-4 sm:grid-cols-2"><label className="text-xs font-bold text-[#567267]">Total land size<input value={size} onChange={(e) => setSize(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8ded5] bg-[#fafbf5] px-3 py-3 text-sm font-normal text-[#3a5e52] outline-none focus:ring-2 focus:ring-[#b7d3bd]" data-testid="input-land-size" /><span className="mt-1 block text-[10px] font-normal text-[#95a39d]">acres</span></label><label className="text-xs font-bold text-[#567267]">Current season<select value={season} onChange={(e) => setSeason(e.target.value)} className="mt-2 w-full rounded-xl border border-[#d8ded5] bg-[#fafbf5] px-3 py-3 text-sm font-normal text-[#3a5e52] outline-none focus:ring-2 focus:ring-[#b7d3bd]" data-testid="select-season"><option>Kharif-2 · Aman</option><option>Rabi · Mustard</option><option>Kharif-1 · Aus</option></select></label></div></Panel></div><div className="mt-5 flex items-center gap-2 text-xs text-[#84958c]"><ShieldCheck size={15} className="text-[#4d9275]" /> Your farm profile is stored on this device for the demo.</div></div>;
 }
 
+function PublicHome() {
+  const [, setLocation] = useLocation();
+  return (
+    <div className="min-h-[100dvh] bg-[#f5f4ed] text-[#203c35]">
+      <header className="mx-auto flex max-w-7xl items-center justify-between px-5 py-5 sm:px-8">
+        <Link href="/" className="flex items-center gap-3" data-testid="link-public-brand">
+          <span className="grid h-11 w-11 place-items-center rounded-xl bg-[#f5c95a] text-[#183d33]"><Sprout size={23} /></span>
+          <span><strong className="block font-display text-xl leading-none text-[#183f35]">FarmCare</strong><small className="mt-1 block text-[10px] font-semibold uppercase tracking-[.18em] text-[#779184]">AI field companion</small></span>
+        </Link>
+        <div className="flex items-center gap-2">
+          <Show when="signed-out">
+            <button type="button" onClick={() => setLocation('/sign-in')} className="rounded-xl px-3.5 py-2.5 text-sm font-semibold text-[#356554] hover:bg-[#e9eee5]" data-testid="button-public-sign-in">Sign in</button>
+            <button type="button" onClick={() => setLocation('/sign-up')} className="rounded-xl bg-[#1f5e4e] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#184c40]" data-testid="button-public-sign-up">Create account</button>
+          </Show>
+        </div>
+      </header>
+      <main className="mx-auto grid max-w-7xl gap-12 px-5 pb-16 pt-10 sm:px-8 lg:grid-cols-[1.05fr_.95fr] lg:items-center lg:pb-24 lg:pt-20">
+        <div>
+          <p className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[.18em] text-[#9a7130]"><span className="h-1.5 w-1.5 rounded-full bg-[#e0ad3d]" /> Built for Bangladesh's fields</p>
+          <h1 className="max-w-3xl font-display text-[clamp(3rem,7vw,6.3rem)] leading-[.94] tracking-[-.055em] text-[#183f35]">Better decisions for every living thing you grow.</h1>
+          <p className="mt-6 max-w-xl text-base leading-7 text-[#667b72] sm:text-lg">FarmCare AI brings crop care, livestock health, pond monitoring, market signals, and a practical field assistant into one calm daily workspace.</p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => setLocation('/sign-up')} className="inline-flex items-center gap-2 rounded-xl bg-[#1f5e4e] px-5 py-3.5 text-sm font-bold text-white shadow-[0_8px_20px_rgba(31,94,78,.18)] hover:-translate-y-0.5" data-testid="button-public-start">Start your farm workspace <ArrowUpRight size={17} /></button>
+            <span className="flex items-center gap-2 text-xs font-semibold text-[#789087]"><ShieldCheck size={15} className="text-[#4d9275]" /> Secure account access</span>
+          </div>
+          <div className="mt-12 flex flex-wrap gap-x-8 gap-y-3 border-t border-[#dedfd4] pt-5 text-xs font-semibold text-[#71847b]"><span>Crop planning</span><span>Livestock checks</span><span>Pond health</span><span>Local market context</span></div>
+        </div>
+        <div className="relative">
+          <div className="paper-grid absolute -inset-5 rounded-[2rem] opacity-60" />
+          <div className="relative rounded-[2rem] border border-[#d7ded2] bg-[#e6efe5] p-4 shadow-[0_18px_60px_rgba(31,94,78,.12)] sm:p-6">
+            <div className="rounded-[1.4rem] bg-[#1f5e4e] p-5 text-[#f5f0dc] sm:p-7">
+              <div className="flex items-start justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#f5c95a]">Tuesday field brief</p><h2 className="mt-2 font-display text-3xl">Good morning, Rahim.</h2><p className="mt-2 text-sm text-[#bfd6c7]">Mymensingh · humid morning</p></div><CloudSun className="text-[#f5c95a]" size={28} /></div>
+              <div className="mt-8 grid gap-3 sm:grid-cols-2"><div className="rounded-xl border border-[#467565] bg-[#285e50] p-4"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#a9caba]">Today's focus</p><p className="mt-2 text-sm font-semibold">Scout Aman Block A</p><span className="mt-3 inline-flex rounded-full bg-[#f5c95a] px-2 py-1 text-[10px] font-bold text-[#183d33]">High priority</span></div><div className="rounded-xl border border-[#467565] bg-[#285e50] p-4"><p className="text-[10px] font-bold uppercase tracking-[.12em] text-[#a9caba]">Pond 02 health</p><p className="mt-2 font-display text-3xl">82<span className="ml-1 text-xs font-sans text-[#a9caba]">/ 100</span></p><p className="mt-2 text-[11px] text-[#bfd6c7]">Test pH before feeding</p></div></div>
+            </div>
+            <div className="mt-4 flex items-center justify-between rounded-xl bg-[#fffefa] px-4 py-3"><span className="flex items-center gap-2 text-sm font-semibold text-[#3e6357]"><span className="grid h-7 w-7 place-items-center rounded-lg bg-[#dcece6] text-[#276957]"><Sprout size={15} /></span> Your farm, in one view</span><CheckCircle2 size={18} className="text-[#4d9275]" /></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
+function SignInPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-[#f5f4ed] px-4 py-8"><SignIn routing="path" path={`${basePath}/sign-in`} signUpUrl={`${basePath}/sign-up`} /></div>;
+}
+
+function SignUpPage() {
+  return <div className="flex min-h-[100dvh] items-center justify-center bg-[#f5f4ed] px-4 py-8"><SignUp routing="path" path={`${basePath}/sign-up`} signInUrl={`${basePath}/sign-in`} /></div>;
+}
+
+function ClerkQueryClientCacheInvalidator() {
+  const { addListener } = useClerk();
+  const previousUserId = useRef<string | null | undefined>(undefined);
+  const queryClientForAuth = useQueryClient();
+  useEffect(() => {
+    const unsubscribe = addListener(({ user }) => {
+      const userId = user?.id ?? null;
+      if (previousUserId.current !== undefined && previousUserId.current !== userId) queryClientForAuth.clear();
+      previousUserId.current = userId;
+    });
+    return unsubscribe;
+  }, [addListener, queryClientForAuth]);
+  return null;
+}
+
+function AuthenticatedExperience({ language, alerts, onDismiss, onLanguage }: { language: Language; alerts: AlertItem[]; onDismiss: (id: number) => void; onLanguage: () => void }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  if (!isLoaded) return <div className="grid min-h-[100dvh] place-items-center bg-[#f5f4ed] text-sm font-semibold text-[#557268]">Loading your farm workspace…</div>;
+  if (!isSignedIn) return <PublicHome />;
+  return <Router language={language} alerts={alerts} onDismiss={onDismiss} onLanguage={onLanguage} />;
+}
+
+function ClerkProviderWithRoutes({ language, alerts, onDismiss, onLanguage }: { language: Language; alerts: AlertItem[]; onDismiss: (id: number) => void; onLanguage: () => void }) {
+  const [, setLocation] = useLocation();
+  return (
+    <ClerkProvider
+      publishableKey={clerkPubKey}
+      proxyUrl={clerkProxyUrl}
+      appearance={clerkAppearance}
+      signInUrl={`${basePath}/sign-in`}
+      signUpUrl={`${basePath}/sign-up`}
+      localization={{ signIn: { start: { title: 'Welcome back to FarmCare', subtitle: 'Sign in to continue your field work' } }, signUp: { start: { title: 'Create your FarmCare account', subtitle: 'Set up your secure farm workspace' } } }}
+      routerPush={(to) => setLocation(stripBase(to))}
+      routerReplace={(to) => setLocation(stripBase(to), { replace: true })}
+    >
+      <QueryClientProvider client={queryClient}>
+        <ClerkQueryClientCacheInvalidator />
+        <Switch>
+          <Route path="/sign-in/*?" component={SignInPage} />
+          <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route component={() => <AuthenticatedExperience language={language} alerts={alerts} onDismiss={onDismiss} onLanguage={onLanguage} />} />
+        </Switch>
+      </QueryClientProvider>
+    </ClerkProvider>
+  );
+}
+
 function RoutedErrorBoundary({ children, resetKey }: { children: ReactNode; resetKey: string }) {
   return <ErrorBoundary resetKey={resetKey}>{children}</ErrorBoundary>;
 }
@@ -315,7 +495,7 @@ function App() {
   const [alerts, setAlerts] = useState<AlertItem[]>(seededAlerts);
   const toggleLanguage = () => setLanguage((current) => current === 'en' ? 'bn' : 'en');
   const dismiss = (id: number) => setAlerts((current) => current.filter((alert) => alert.id !== id));
-  return <QueryClientProvider client={queryClient}><TooltipProvider><WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, '')}><Router language={language} alerts={alerts} onDismiss={dismiss} onLanguage={toggleLanguage} /></WouterRouter><Toaster /></TooltipProvider></QueryClientProvider>;
+  return <TooltipProvider><WouterRouter base={basePath}><ClerkProviderWithRoutes language={language} alerts={alerts} onDismiss={dismiss} onLanguage={toggleLanguage} /><Toaster /></WouterRouter></TooltipProvider>;
 }
 
 export default App;
